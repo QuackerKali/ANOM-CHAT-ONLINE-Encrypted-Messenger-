@@ -1,57 +1,33 @@
-▶️ How to Use
-1. Install requirements
+import asyncio
+import websockets
 
-On both server and client machines:
+clients = set()
 
-pip install websockets cryptography
-2. Start the server (host machine / VPS)
+async def handler(websocket):
+    clients.add(websocket)
+    print(f"[JOIN] Users: {len(clients)}")
 
-Run the server first:
+    try:
+        async for message in websocket:
+            # broadcast to all connected users
+            dead = set()
 
-python server.py
+            for client in clients:
+                try:
+                    await client.send(message)
+                except:
+                    dead.add(client)
 
-You should see:
+            for d in dead:
+                clients.remove(d)
 
-[SERVER] ws://0.0.0.0:8765 running
-3. Get the server IP
+    finally:
+        clients.remove(websocket)
+        print(f"[LEAVE] Users: {len(clients)}")
 
-If hosting on a VPS or another PC, find its IP:
+async def main():
+    print("[SERVER] ws://0.0.0.0:8765 running")
+    async with websockets.serve(handler, "0.0.0.0", 8765):
+        await asyncio.Future()
 
-curl ifconfig.me
-
-or:
-
-ip a
-4. Configure the client
-
-Open client.py and update:
-
-SERVER_URL = "ws://YOUR_SERVER_IP:8765"
-
-Example:
-
-ws://203.0.113.10:8765
-5. Run the client
-
-On each user’s device:
-
-python client.py
-6. Share encryption key
-
-When the client starts, it generates a key like:
-
-SHARE THIS KEY WITH FRIENDS:
-G3mX1x7q8V0k2PpQzYtR8c1nVx9Jd2aBcD3EfGhIjKl=
-
-⚠️ All users must use the same key for messages to decrypt correctly.
-
-7. Start chatting
-Type message in the box
-Click Send
-Messages appear instantly for all connected users
-💬 Summary
-Run server
-Set server IP in client
-Run client
-Share encryption key
-Chat securely over internet
+asyncio.run(main())
